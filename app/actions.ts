@@ -18,7 +18,7 @@ type PushMessage = {
 }
  
 webpush.setVapidDetails(
-  'mailto:castrillodev@gmail.com',
+  'mailto:tu@correo.com',
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
   process.env.VAPID_PRIVATE_KEY!
 )

@@ -69,7 +69,6 @@ export default function PushNotificationManager() {
             console.log('Enviando notificación de prueba:', message)
             const serializedSub = JSON.parse(JSON.stringify(subscription))
             await sendNotification({ title, body: message, url }, serializedSub)
-            setMessage('')
         }
     }
 
