@@ -16,7 +16,11 @@ self.addEventListener('push', function (event) {
 })
 
 self.addEventListener('notificationclick', function (event) {
-    console.log('Notification click received.')
+    console.log('Notificación clicada.')
     event.notification.close()
-    event.waitUntil(clients.openWindow('https://jorgecastrillo.blog'))
+
+    // Los datos están en event.notification.data, no en event.data
+    const data = event.notification.data
+    const url = data?.url || 'https://jorgecastrillo.blog'
+    event.waitUntil(clients.openWindow(url))
 })

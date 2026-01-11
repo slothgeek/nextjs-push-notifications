@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { subscribeUser, unsubscribeUser, sendNotification } from './actions'
 
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
+
 function urlBase64ToUint8Array(base64String: string) {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
     const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
@@ -16,39 +18,14 @@ function urlBase64ToUint8Array(base64String: string) {
     return outputArray
 }
 
-function subscriptionToPlainObject(subscription: PushSubscription) {
-    // Convertir ArrayBuffer a base64 para las claves
-    const p256dh = subscription.getKey('p256dh')
-    const auth = subscription.getKey('auth')
-    
-    function arrayBufferToBase64(buffer: ArrayBuffer): string {
-        const bytes = new Uint8Array(buffer)
-        let binary = ''
-        for (let i = 0; i < bytes.byteLength; i++) {
-            binary += String.fromCharCode(bytes[i])
-        }
-        return btoa(binary)
-    }
-    
-    const keys = p256dh && auth
-        ? {
-              p256dh: arrayBufferToBase64(p256dh),
-              auth: arrayBufferToBase64(auth),
-          }
-        : null
-
-    return {
-        endpoint: subscription.endpoint,
-        keys,
-    }
-}
-
 export default function PushNotificationManager() {
     const [isSupported, setIsSupported] = useState(false)
     const [subscription, setSubscription] = useState<PushSubscription | null>(
         null
     )
+    const [title, setTitle] = useState('')
     const [message, setMessage] = useState('')
+    const [url, setUrl] = useState('')
 
     useEffect(() => {
         if ('serviceWorker' in navigator && 'PushManager' in window) {
@@ -67,15 +44,17 @@ export default function PushNotificationManager() {
     }
 
     async function subscribeToPush() {
+        if (!VAPID_PUBLIC_KEY) {
+            alert('Error: La clave VAPID pública no está configurada. Por favor, configura NEXT_PUBLIC_VAPID_PUBLIC_KEY en tu archivo .env.local')
+            return
+        }
         const registration = await navigator.serviceWorker.ready
         const sub = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(
-                process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
-            ),
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
         })
         setSubscription(sub)
-        const serializedSub = subscriptionToPlainObject(sub)
+        const serializedSub = JSON.parse(JSON.stringify(sub))
         await subscribeUser(serializedSub)
     }
 
@@ -88,8 +67,8 @@ export default function PushNotificationManager() {
     async function sendTestNotification() {
         if (subscription) {
             console.log('Enviando notificación de prueba:', message)
-            const serializedSub = subscriptionToPlainObject(subscription)
-            await sendNotification(message, serializedSub)
+            const serializedSub = JSON.parse(JSON.stringify(subscription))
+            await sendNotification({ title, body: message, url }, serializedSub)
             setMessage('')
         }
     }
@@ -111,12 +90,26 @@ export default function PushNotificationManager() {
                     </button>
                     <div className='border-t border-gray-300 w-full'></div>
                     <h2 className='text-lg font-bold'>Enviar notificación de prueba</h2>
+                    <input
+                        type="text"
+                        placeholder="Ingrese el titulo de la notificación"
+                        className='w-full max-w-xs p-2 rounded-md border border-gray-300 bg-white placeholder:text-gray-500 text-black'
+                        value={title}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
+                    />
                     <textarea
                         placeholder="Ingrese el mensaje de la notificación"
                         className='w-full p-2 rounded-md border border-gray-300 bg-white placeholder:text-gray-500 text-black'
                         value={message}
                         onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)}
                     >{message}</textarea>
+                    <input
+                        type="text"
+                        placeholder="Ingrese la url de la notificación"
+                        className='w-full p-2 rounded-md border border-gray-300 bg-white placeholder:text-gray-500 text-black'
+                        value={url}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
+                    />
                     <button
                         onClick={sendTestNotification}
                         className='bg-blue-500 text-white py-2 px-4 rounded-md cursor-pointer'

@@ -10,6 +10,12 @@ type SerializedSubscription = {
     auth: string
   } | null
 }
+
+type PushMessage = {
+    title: string
+    body: string
+    url: string
+}
  
 webpush.setVapidDetails(
   'mailto:castrillodev@gmail.com',
@@ -33,7 +39,7 @@ export async function unsubscribeUser() {
   return { success: true }
 }
  
-export async function sendNotification(message: string, sub: SerializedSubscription) {
+export async function sendNotification(message: PushMessage, sub: SerializedSubscription) {
   if (!sub || !sub.keys) {
     throw new Error('No hay suscripción disponible')
   }
@@ -51,9 +57,10 @@ export async function sendNotification(message: string, sub: SerializedSubscript
     await webpush.sendNotification(
       pushSubscription,
       JSON.stringify({
-        title: 'Notificación de prueba',
-        body: message,
+        title: message.title,
+        body: message.body,
         icon: '/icon.png',
+        url: message.url,
       })
     )
     return { success: true }
